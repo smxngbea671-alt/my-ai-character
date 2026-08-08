@@ -1,5 +1,5 @@
 // 🔴 1. เอา API Key ของคุณมาใส่ตรงนี้ (ให้อยู่ในเครื่องหมายคำพูดนะ) 🔴
-const MY_SECRET_API_KEY = "ใส่_API_KEY_ตรงนี้"; 
+const MY_SECRET_API_KEY = "AIzaSyB-รหัสยาวๆ_ของคุณ_ก๊อปมาวางตรงนี้";
 
 // สถานะแอป
 let characters = JSON.parse(localStorage.getItem('my_characters')) || [];
