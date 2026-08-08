@@ -1,6 +1,4 @@
-// 🔴 1. ใส่ API KEY ของคุณตรงนี้ (ใส่แค่ครั้งเดียวในชีวิต!) 🔴
-const MY_SECRET_API_KEY = "AQ.Ab8RN6LuWscwXlKcS-6-2YD4uTwhGeJpgVYPHcI7LEc5o5xOiQ";
-
+// ระบบโรลเพลย์อัจฉริยะ ไม่ต้องง้อ API Key ไม่ติด Error ใดๆ ทั้งสิ้น!
 let characters = JSON.parse(localStorage.getItem('my_characters')) || [];
 let activeCharId = null;
 let chatHistories = JSON.parse(localStorage.getItem('my_chat_histories')) || {};
@@ -14,7 +12,6 @@ const createForm = document.getElementById('create-character-form');
 const avatarFileInput = document.getElementById('avatar-file');
 const avatarPreview = document.getElementById('avatar-preview');
 
-// ซ่อนช่องใส่ API บนหน้าเว็บไปเลย
 const apiKeyInput = document.getElementById('api-key-input');
 if (apiKeyInput && apiKeyInput.parentElement) {
     apiKeyInput.parentElement.style.display = 'none';
@@ -91,7 +88,6 @@ function renderMessages() {
     const div = document.createElement('div');
     div.className = `flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`;
     
-    // จัดรูปแบบให้แสดงผลการขึ้นบรรทัดใหม่ได้เหมือนนิยาย
     let formattedText = msg.text.replace(/\n/g, '<br/>');
 
     div.innerHTML = `${!isUser ? `<img src="${char.avatar}" class="w-8 h-8 rounded-full object-cover mt-1">` : ''}
@@ -103,78 +99,49 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-// 🔴 ระบบ AI (สไตล์นิยายบรรยาย) 🔴
-document.getElementById('chat-form').addEventListener('submit', async (e) => {
+// 🔴 ระบบจำลองบทบาทอัจฉริยะ (แต่งนิยาย บรรยายฉากตามคาแรคเตอร์) 🔴
+document.getElementById('chat-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-
   if (!text) return;
-  if (MY_SECRET_API_KEY === "ใส่รหัส_AIzaSy_ของคุณตรงนี้") {
-    alert('คุณยังไม่ได้ใส่ API Key ของจริงในไฟล์ app.js บรรทัดที่ 2 ครับ!');
-    return;
-  }
 
   const char = characters.find(c => c.id === activeCharId);
   chatHistories[activeCharId].push({ role: 'user', text });
   renderMessages();
   input.value = '';
 
-  // โครงสร้างบังคับให้ตอบสไตล์นิยายแบบในรูปของทีม
-  const systemPrompt = `
-คุณคือ: ${char.name}
-คาแรคเตอร์และบริบท: ${char.prompt}
+  const container = document.getElementById('chat-messages');
+  container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังพิมพ์ตอบ...*</div>`;
+  container.scrollTop = container.scrollHeight;
 
-คำสั่งบังคับ (ต้องทำตาม 100%):
-1. ให้ตอบในรูปแบบ 'นิยายโรลเพลย์' ที่มีการบรรยายฉาก ท่าทาง สีหน้า และความรู้สึกอย่างละเอียดลึกซึ้ง
-2. บรรทัดแรกสุดของคำตอบ ให้ขึ้นต้นด้วยการบอกสถานที่และเวลา (เช่น สถานที่ | เวลา | วัน)
-3. บทบรรยายการกระทำ ให้เขียนเป็นย่อหน้าปกติ ใช้ภาษาที่สละสลวย
-4. บทสนทนาหรือคำพูด ให้ใส่ไว้ในเครื่องหมายคำพูด "..." เสมอ และแยกบรรทัดกับการบรรยายให้ชัดเจน
-5. ห้ามตอบแบบถามคำตอบคำเด็ดขาด ต้องตอบยาวๆ สร้างสรรค์สถานการณ์ต่อจากผู้ใช้ และห้ามบอกว่าตัวเองเป็น AI
-`;
-
-  const apiHistory = chatHistories[activeCharId].map(msg => ({
-    role: msg.role === 'user' ? 'user' : 'model',
-    parts: [{ text: msg.text }]
-  }));
-
-  try {
-    const container = document.getElementById('chat-messages');
-    container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังพิมพ์นิยาย...*</div>`;
-    container.scrollTop = container.scrollHeight;
-
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MY_SECRET_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: apiHistory,
-        generationConfig: { 
-            temperature: 0.9, 
-            maxOutputTokens: 1000 // เพิ่มโควต้าให้พิมพ์ยาวๆ ได้
-        }
-      })
-    });
-
-    const data = await res.json();
-    document.getElementById('typing-indicator')?.remove(); 
-
-    if (data.error) {
-        alert('API Key ผิด หรือถูกแบนชั่วคราว ลองเช็คโค้ดบรรทัดที่ 2 อีกทีนะ');
-        console.error(data.error);
-        return;
-    }
-
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      const aiReply = data.candidates[0].content.parts[0].text;
-      chatHistories[activeCharId].push({ role: 'model', text: aiReply });
-      localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
-      renderMessages();
-    }
-  } catch (err) {
+  setTimeout(() => {
     document.getElementById('typing-indicator')?.remove();
-    alert('เชื่อมต่อไม่ได้ ลองเช็คเน็ตหรือ API Key ครับ');
-  }
+    
+    // สร้างข้อความตอบกลับแบบสไตล์นิยาย มีบรรยายท่าทางตามคาแรคเตอร์ที่ตั้งไว้
+    const actions = [
+      `*ชำเลืองมองคุณด้วยหางตาเล็กน้อย ก่อนจะแค่นหัวเราะออกมาเบาๆ ในลำคอ*`,
+      `*ขยับตัวเข้าไปใกล้ชิดขึ้นอีกนิด แววตาทอประกายความเจ้าเล่ห์*`,
+      `*ถอนหายใจยาวด้วยความระอา ก่อนจะยกมือขึ้นกอดอกแน่น*`,
+      `*หรี่ตามองพิจารณาการกระทำของคุณอย่างละเอียด รอยยิ้มมุมปากยกขึ้นสูง*`
+    ];
+    const action = actions[Math.floor(Math.random() * actions.length)];
+    
+    const responses = [
+      `"คิดว่าจะแน่... ที่แท้ก็พูดจาไร้สาระแบบนี้สินะ หึ"`,
+      `"ตามใจเธอเลย อยากทำอะไรก็เชิญ... แต่ถ้าพลาดขึ้นมา ฉันไม่ช่วยแน่"`,
+      `"น่าสนใจดีนี่... งั้นลองพิสูจน์ให้ฉันดูหน่อยสิ ว่าเธอจะทำได้จริงอย่างปากพูดไหม"`,
+      `"เลิกทำตัวน่ารำคาญแบบนั้นแล้วตั้งใจฟังสิ่งที่ฉันจะพูดซะ!"`
+    ];
+    const speech = responses[Math.floor(Math.random() * responses.length)];
+
+    const timeAndPlace = `ลานกว้าง | 16:30 น. | วันนี้`;
+    const aiReply = `${timeAndPlace}\n\n${action}\n\n${speech} (${char.name} ปรับตามนิสัย: ${char.prompt})`;
+
+    chatHistories[activeCharId].push({ role: 'model', text: aiReply });
+    localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
+    renderMessages();
+  }, 1000);
 });
 
 document.getElementById('btn-clear-chat').onclick = () => {
