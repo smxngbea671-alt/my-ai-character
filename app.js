@@ -1,4 +1,5 @@
-// โค้ดแบบออฟไลน์ 100% สบายที่สุด ไม่ต้องใช้ API Key อีกต่อไป!
+// 🔴 1. ใส่ API KEY ของคุณตรงนี้ (ใส่แค่ครั้งเดียวในชีวิต!) 🔴
+const MY_SECRET_API_KEY = "ใส่รหัส_AIzaSy_ของคุณตรงนี้"; 
 
 let characters = JSON.parse(localStorage.getItem('my_characters')) || [];
 let activeCharId = null;
@@ -13,7 +14,7 @@ const createForm = document.getElementById('create-character-form');
 const avatarFileInput = document.getElementById('avatar-file');
 const avatarPreview = document.getElementById('avatar-preview');
 
-// ซ่อนช่อง API Key ทิ้งไปเลย
+// ซ่อนช่องใส่ API บนหน้าเว็บไปเลย
 const apiKeyInput = document.getElementById('api-key-input');
 if (apiKeyInput && apiKeyInput.parentElement) {
     apiKeyInput.parentElement.style.display = 'none';
@@ -90,11 +91,11 @@ function renderMessages() {
     const div = document.createElement('div');
     div.className = `flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`;
     
-    // ทำตัวเอียงเมื่อมีเครื่องหมาย * (สำหรับบรรยายท่าทาง)
-    let formattedText = msg.text.replace(/\*(.*?)\*/g, '<span class="text-indigo-300 italic">*$1*</span>');
+    // จัดรูปแบบให้แสดงผลการขึ้นบรรทัดใหม่ได้เหมือนนิยาย
+    let formattedText = msg.text.replace(/\n/g, '<br/>');
 
     div.innerHTML = `${!isUser ? `<img src="${char.avatar}" class="w-8 h-8 rounded-full object-cover mt-1">` : ''}
-      <div class="max-w-[85%] p-3.5 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'}">
+      <div class="max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700 shadow-md'}">
         ${formattedText}
       </div>`;
     container.appendChild(div);
@@ -102,46 +103,78 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-// 🔴 ระบบแชทออฟไลน์ (คุมลอจิกการตอบเอง) 🔴
-document.getElementById('chat-form').addEventListener('submit', (e) => {
+// 🔴 ระบบ AI (สไตล์นิยายบรรยาย) 🔴
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
+
   if (!text) return;
+  if (MY_SECRET_API_KEY === "ใส่รหัส_AIzaSy_ของคุณตรงนี้") {
+    alert('คุณยังไม่ได้ใส่ API Key ของจริงในไฟล์ app.js บรรทัดที่ 2 ครับ!');
+    return;
+  }
 
   const char = characters.find(c => c.id === activeCharId);
-  
-  // พิมพ์ข้อความของเรา
   chatHistories[activeCharId].push({ role: 'user', text });
   renderMessages();
   input.value = '';
 
-  const container = document.getElementById('chat-messages');
-  container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังพิมพ์...*</div>`;
-  container.scrollTop = container.scrollHeight;
+  // โครงสร้างบังคับให้ตอบสไตล์นิยายแบบในรูปของทีม
+  const systemPrompt = `
+คุณคือ: ${char.name}
+คาแรคเตอร์และบริบท: ${char.prompt}
 
-  // จำลองเวลาให้เหมือนบอทกำลังคิด (0.8 วินาที)
-  setTimeout(() => {
+คำสั่งบังคับ (ต้องทำตาม 100%):
+1. ให้ตอบในรูปแบบ 'นิยายโรลเพลย์' ที่มีการบรรยายฉาก ท่าทาง สีหน้า และความรู้สึกอย่างละเอียดลึกซึ้ง
+2. บรรทัดแรกสุดของคำตอบ ให้ขึ้นต้นด้วยการบอกสถานที่และเวลา (เช่น สถานที่ | เวลา | วัน)
+3. บทบรรยายการกระทำ ให้เขียนเป็นย่อหน้าปกติ ใช้ภาษาที่สละสลวย
+4. บทสนทนาหรือคำพูด ให้ใส่ไว้ในเครื่องหมายคำพูด "..." เสมอ และแยกบรรทัดกับการบรรยายให้ชัดเจน
+5. ห้ามตอบแบบถามคำตอบคำเด็ดขาด ต้องตอบยาวๆ สร้างสรรค์สถานการณ์ต่อจากผู้ใช้ และห้ามบอกว่าตัวเองเป็น AI
+`;
+
+  const apiHistory = chatHistories[activeCharId].map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'model',
+    parts: [{ text: msg.text }]
+  }));
+
+  try {
+    const container = document.getElementById('chat-messages');
+    container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังพิมพ์นิยาย...*</div>`;
+    container.scrollTop = container.scrollHeight;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MY_SECRET_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: apiHistory,
+        generationConfig: { 
+            temperature: 0.9, 
+            maxOutputTokens: 1000 // เพิ่มโควต้าให้พิมพ์ยาวๆ ได้
+        }
+      })
+    });
+
+    const data = await res.json();
+    document.getElementById('typing-indicator')?.remove(); 
+
+    if (data.error) {
+        alert('API Key ผิด หรือถูกแบนชั่วคราว ลองเช็คโค้ดบรรทัดที่ 2 อีกทีนะ');
+        console.error(data.error);
+        return;
+    }
+
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      const aiReply = data.candidates[0].content.parts[0].text;
+      chatHistories[activeCharId].push({ role: 'model', text: aiReply });
+      localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
+      renderMessages();
+    }
+  } catch (err) {
     document.getElementById('typing-indicator')?.remove();
-    
-    // 💡 ชุดคำตอบ (สามารถพิมพ์เพิ่ม/แก้เองได้ตามใจชอบเลยครับ)
-    const replies = [
-      `*หรี่ตามอง* แกมีอะไรก็รีบๆ พูดมา!`,
-      `*กระทืบเท้าด้วยความหงุดหงิด* ข้าไม่อยากฟังเรื่องไร้สาระ!`,
-      `ฮ่าๆๆ ก็เอาสิ ลองดูสักตั้ง!`,
-      `*กอดอกแน่น* แล้วแกจะเอายังไงต่อล่ะ?`,
-      `ข้าเป็นนักรบนะเว้ย ไม่ใช่เด็กอมมือ!`,
-      `*ถอนหายใจแรงๆ* น่ารำคาญชะมัด...`,
-      `อืม... ก็ได้ ข้าจะยอมฟังแกสักครั้ง`
-    ];
-    
-    // สุ่มหยิบคำตอบมา 1 ประโยค
-    const randomReply = replies[Math.floor(Math.random() * replies.length)];
-    
-    chatHistories[activeCharId].push({ role: 'model', text: randomReply });
-    localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
-    renderMessages();
-  }, 800);
+    alert('เชื่อมต่อไม่ได้ ลองเช็คเน็ตหรือ API Key ครับ');
+  }
 });
 
 document.getElementById('btn-clear-chat').onclick = () => {
