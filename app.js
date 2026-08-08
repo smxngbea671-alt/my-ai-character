@@ -1,6 +1,5 @@
 // 🔴 1. ใส่ API KEY ของคุณตรงนี้ (ใส่แค่ครั้งเดียวในชีวิต!) 🔴
-const MY_SECRET_API_KEY = "ใส่รหัส_AIzaSy_ของคุณตรงนี้"; 
-
+const MY_SECRET_API_KEY = "AIzaSyB1x2y3z4A5b6c7d8e9f0g1h2i3j4k5l6m";
 let characters = JSON.parse(localStorage.getItem('my_characters')) || [];
 let activeCharId = null;
 let chatHistories = JSON.parse(localStorage.getItem('my_chat_histories')) || {};
