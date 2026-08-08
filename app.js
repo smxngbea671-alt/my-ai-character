@@ -12,11 +12,6 @@ const characterListEl = document.getElementById('character-list');
 const createForm = document.getElementById('create-character-form');
 const avatarFileInput = document.getElementById('avatar-file');
 const avatarPreview = document.getElementById('avatar-preview');
-const apiKeyInput = document.getElementById('api-key-input');
-
-// ดึง API Key จาก localStorage ถ้าเคยบันทึกไว้
-apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-apiKeyInput.addEventListener('change', (e) => localStorage.setItem('gemini_api_key', e.target.value.trim()));
 
 // แปลงไฟล์ภาพอัปโหลดเป็น Base64
 avatarFileInput.addEventListener('change', (e) => {
@@ -45,7 +40,6 @@ createForm.addEventListener('submit', (e) => {
   characters.push(newChar);
   localStorage.setItem('my_characters', JSON.stringify(characters));
   
-  // สร้างประวัติแชทเริ่มต้น
   chatHistories[newChar.id] = [
     { role: 'model', text: newChar.greeting }
   ];
@@ -72,7 +66,7 @@ function renderCharacterList() {
   });
 }
 
-// เปิดหน้าแชทของตัวละครที่เลือก
+// เปิดหน้าแชท
 function openChat(charId) {
   activeCharId = charId;
   const char = characters.find(c => c.id === charId);
@@ -94,7 +88,7 @@ btnShowCreate.onclick = () => {
   renderCharacterList();
 };
 
-// แสดงข้อความในห้องแชท
+// แสดงข้อความ
 function renderMessages() {
   const container = document.getElementById('chat-messages');
   container.innerHTML = '';
@@ -118,57 +112,35 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-// ส่งข้อความคุยกับ AI
-document.getElementById('chat-form').addEventListener('submit', async (e) => {
+// ระบบตอบกลับ (ไม่ต้องใช้ API Key)
+document.getElementById('chat-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  const apiKey = apiKeyInput.value.trim();
 
   if (!text) return;
-  if (!apiKey) {
-    alert('กรุณาใส่ Gemini API Key ตรงมุมซ้ายล่างก่อนนะครับ');
-    return;
-  }
 
   const char = characters.find(c => c.id === activeCharId);
   
-  // เพิ่มข้อความผู้ใช้ลงในประวัติ
+  // เพิ่มข้อความผู้ใช้
   chatHistories[activeCharId].push({ role: 'user', text });
   renderMessages();
   input.value = '';
 
-  // เตรียม Payload ส่งไปหา Gemini API
-  const apiHistory = chatHistories[activeCharId].map(msg => ({
-    role: msg.role === 'user' ? 'user' : 'model',
-    parts: [{ text: msg.text }]
-  }));
+  // สุ่มคำตอบตอบกลับอัตโนมัติทันที
+  setTimeout(() => {
+    const replies = [
+      `ฉันสวมบทบาทเป็น ${char.name} อยู่จัดให้ตามนิสัย: (${char.prompt})`,
+      `ฮ่าๆ ${text} หรอ? รับทราบเลย!`,
+      `ว่ายังไงนะ? ลองเล่าให้ฟังอีกทีสิ!`,
+      `เข้าใจแล้ว ลุยกันต่อเลย!`
+    ];
+    const randomReply = replies[Math.floor(Math.random() * replies.length)];
 
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: `คุณคือ: ${char.name}\nคำอธิบายบุคลิก/นิสัย/พฤติกรรมของคุณคือ:\n${char.prompt}\n\nกรุณาสวมบทบาทตามนี้ตลอดการสนทนา` }]
-        },
-        contents: apiHistory
-      })
-    });
-
-    const data = await res.json();
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-      const aiReply = data.candidates[0].content.parts[0].text;
-      chatHistories[activeCharId].push({ role: 'model', text: aiReply });
-      localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
-      renderMessages();
-    } else {
-      alert('เกิดข้อผิดพลาดในการตอบกลับจาก AI กรุณาเช็ค API Key หรือลองอีกครั้ง');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('ไม่สามารถเชื่อมต่อกับ AI ได้');
-  }
+    chatHistories[activeCharId].push({ role: 'model', text: randomReply });
+    localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
+    renderMessages();
+  }, 500);
 });
 
 // ล้างแชท
