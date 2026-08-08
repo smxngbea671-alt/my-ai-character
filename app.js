@@ -1,3 +1,6 @@
+// 🔴 1. เอา API Key ของคุณมาใส่ตรงนี้ (ให้อยู่ในเครื่องหมายคำพูดนะ) 🔴
+const MY_SECRET_API_KEY = "ใส่_API_KEY_ตรงนี้"; 
+
 // สถานะแอป
 let characters = JSON.parse(localStorage.getItem('my_characters')) || [];
 let activeCharId = null;
@@ -11,12 +14,11 @@ const characterListEl = document.getElementById('character-list');
 const createForm = document.getElementById('create-character-form');
 const avatarFileInput = document.getElementById('avatar-file');
 const avatarPreview = document.getElementById('avatar-preview');
-const apiKeyInput = document.getElementById('api-key-input'); // คราวนี้ต้องใช้ API Key แล้วนะ
 
-// โหลด API Key จากที่เคยบันทึกไว้
-if(apiKeyInput) {
-    apiKeyInput.value = localStorage.getItem('gemini_api_key') || '';
-    apiKeyInput.addEventListener('change', (e) => localStorage.setItem('gemini_api_key', e.target.value.trim()));
+// 🔴 2. ซ่อนกล่องใส่ API Key มุมซ้ายล่างทิ้งไปเลย (ไม่ต้องเห็นให้กวนใจอีก) 🔴
+const apiKeyInput = document.getElementById('api-key-input');
+if (apiKeyInput && apiKeyInput.parentElement) {
+    apiKeyInput.parentElement.style.display = 'none'; 
 }
 
 avatarFileInput.addEventListener('change', (e) => {
@@ -102,66 +104,57 @@ function renderMessages() {
   container.scrollTop = container.scrollHeight;
 }
 
-// ระบบเชื่อมต่อสมอง AI แบบ Roleplay (นิยาย/สมจริง)
+// ระบบเชื่อมต่อสมอง AI แบบ Roleplay
 document.getElementById('chat-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
-  const apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
 
   if (!text) return;
-  if (!apiKey) {
-    alert('ระบบ Roleplay ต้องใช้ Gemini API Key โปรดใส่รหัสที่มุมซ้ายล่างครับ');
+  if (MY_SECRET_API_KEY === "ใส่_API_KEY_ตรงนี้") {
+    alert('ลืมใส่ API Key ในโค้ดบรรทัดที่ 2 หรือเปล่าครับ! ไปแก้บน GitHub ก่อนนะ');
     return;
   }
 
   const char = characters.find(c => c.id === activeCharId);
   
-  // พิมพ์ข้อความผู้ใช้
   chatHistories[activeCharId].push({ role: 'user', text });
   renderMessages();
   input.value = '';
 
-  // โครงสร้างสะกดจิต (System Instruction) ขั้นเทพ
   const systemPrompt = `
 คุณคือบทบาทสมมติชื่อ: ${char.name}
 นิสัยและบุคลิกของคุณคือ: ${char.prompt}
 
 กฎเหล็กที่คุณต้องทำตามอย่างเคร่งครัด:
-1. สวมบทบาทนี้ 100% ห้ามหลุดคาร์แรคเตอร์เด็ดขาด ห้ามบอกว่าตัวเองเป็น AI หรือโปรแกรมภาษา
-2. ให้ตอบกลับเป็นภาษาพูดแบบมนุษย์จริงๆ ตามนิสัยที่กำหนด ถ้ากำหนดว่าเถื่อนก็ต้องพูดคำหยาบหรือแข็งกร้าว
-3. **ต้องมีการบรรยายท่าทาง สีหน้า หรือการกระทำประกอบคำพูด** โดยใส่ไว้ในเครื่องหมายดอกจัน เช่น *ยิ้มมุมปากและกอดอก* หรือ *ถอนหายใจยาวก่อนจะหันมามอง*
-4. โต้ตอบอย่างเป็นธรรมชาติ ไม่ต้องพยายามช่วยเหลือหรือเป็นมิตรเกินเหตุหากขัดกับนิสัย
-5. ห้ามพูดซ้ำซาก หลีกเลี่ยงการตอบแบบถามคำตอบคำ ให้การสนทนาลื่นไหลเหมือนในนิยาย
+1. สวมบทบาทนี้ 100% ห้ามหลุดคาร์แรคเตอร์เด็ดขาด ห้ามบอกว่าตัวเองเป็น AI
+2. ให้ตอบกลับเป็นภาษาพูดแบบมนุษย์จริงๆ ตามนิสัยที่กำหนด
+3. **ต้องมีการบรรยายท่าทาง สีหน้า หรือการกระทำประกอบคำพูด** โดยใส่ไว้ในเครื่องหมายดอกจัน เช่น *ยิ้มมุมปากและกอดอก* 
+4. โต้ตอบอย่างเป็นธรรมชาติ หลีกเลี่ยงการตอบแบบถามคำตอบคำ
 `;
 
-  // เตรียมประวัติการคุย
   const apiHistory = chatHistories[activeCharId].map(msg => ({
     role: msg.role === 'user' ? 'user' : 'model',
     parts: [{ text: msg.text }]
   }));
 
   try {
-    // โหลดตัวหนังสือ "กำลังพิมพ์..."
     const container = document.getElementById('chat-messages');
-    container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังพิมพ์...*</div>`;
+    container.innerHTML += `<div id="typing-indicator" class="text-xs text-slate-400 mt-2">*${char.name} กำลังคิด...*</div>`;
     container.scrollTop = container.scrollHeight;
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MY_SECRET_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: apiHistory,
-        generationConfig: {
-            temperature: 0.9, // เพิ่มความครีเอทีฟ
-            maxOutputTokens: 500
-        }
+        generationConfig: { temperature: 0.9, maxOutputTokens: 500 }
       })
     });
 
     const data = await res.json();
-    document.getElementById('typing-indicator')?.remove(); // ลบคำว่ากำลังพิมพ์
+    document.getElementById('typing-indicator')?.remove(); 
 
     if (data.candidates && data.candidates[0].content.parts[0].text) {
       const aiReply = data.candidates[0].content.parts[0].text;
@@ -169,7 +162,7 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
       localStorage.setItem('my_chat_histories', JSON.stringify(chatHistories));
       renderMessages();
     } else {
-      alert('AI ไม่ตอบกลับ ลองเช็ค API Key หรือลองใหม่อีกครั้งนะ');
+      alert('AI ไม่ตอบกลับ ลองตรวจสอบ API Key หรือลองใหม่อีกครั้งครับ');
     }
   } catch (err) {
     document.getElementById('typing-indicator')?.remove();
